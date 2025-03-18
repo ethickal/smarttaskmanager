@@ -26,7 +26,9 @@ const Login = () => {
     
     try {
       const res = await axios.post('/api/users/login', { email, password });
+      console.log('Token received from server:', res.data.token); // Log the token
       login(res.data.token);
+
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.msg || 'An error occurred');

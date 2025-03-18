@@ -1,8 +1,22 @@
 // server/routes/tasks.js
 const express = require('express');
 const router = express.Router();
-
+const verifyToken = require("../middleware/auth");
 const Task = require('../models/Task');
+
+
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ msg: 'User not authenticated' });
+    }
+    const tasks = await Task.find({ user: req.user.id });
+
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
 // Get all tasks for the authenticated user
 router.get('/', async (req, res) => {
@@ -32,8 +46,12 @@ router.post('/', async (req, res) => {
   const { title, description, category, priority, dueDate } = req.body;
 
   try {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ msg: 'User not authenticated' });
+    }
     const newTask = new Task({
       user: req.user.id,
+
       title,
       description,
       category,

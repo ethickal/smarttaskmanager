@@ -1,5 +1,5 @@
 // client/src/components/Tasks/TaskList.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import TaskItem from './TaskItem';
 import TaskForm from './TaskForm';
@@ -12,49 +12,58 @@ const TaskList = () => {
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  // Fetch tasks
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-          const token = localStorage.getItem('token'); // Get token from storage
-          const response = await axios.get('http://localhost:5000/api/tasks', {
-              headers: {
-                  Authorization: `Bearer ${token}`
-              }
-          });
-          console.log(response.data);
-      } catch (error) {
-          console.error("Error fetching tasks:", error.response?.data || error.message);
-      }
-  };
+  // Fetch tasks from the API
+  const fetchTasks = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    console.log("Token before fetching tasks:", token); // Debugging log
   
+    if (!token) {
+      console.error("No token found. Please log in.");
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      const response = await axios.get("http://localhost:5000/api/tasks", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      console.log("Tasks fetched successfully:", response.data);
+      setTasks(response.data);
+    } catch (error) {
+      console.error("Error fetching tasks:", error.response?.data || error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]); // Only re-run when `token` changes
+
+  useEffect(() => {
     fetchTasks();
-  }, [token]);
+  }, [fetchTasks]); // Only re-run if `fetchTasks` changes
 
   // Add task
   const addTask = task => {
-    setTasks([task, ...tasks]);
+    setTasks(prevTasks => [task, ...prevTasks]);
   };
 
   // Update task
   const updateTask = updatedTask => {
-    setTasks(tasks.map(task => task._id === updatedTask._id ? updatedTask : task));
+    setTasks(prevTasks =>
+      prevTasks.map(task => task._id === updatedTask._id ? updatedTask : task)
+    );
   };
 
   // Delete task
   const deleteTask = id => {
-    setTasks(tasks.filter(task => task._id !== id));
+    setTasks(prevTasks => prevTasks.filter(task => task._id !== id));
   };
 
   // Filter tasks
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'completed') return task.completed;
-    if (filter === 'active') return !task.completed;
-    return true;
-  }).filter(task => {
-    if (categoryFilter === 'all') return true;
-    return task.category === categoryFilter;
-  });
+  const filteredTasks = tasks
+    .filter(task => (filter === 'completed' ? task.completed : filter === 'active' ? !task.completed : true))
+    .filter(task => (categoryFilter === 'all' ? true : task.category === categoryFilter));
 
   if (loading) return <div>Loading...</div>;
 
