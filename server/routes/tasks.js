@@ -1,32 +1,14 @@
 // server/routes/tasks.js
 const express = require('express');
 const router = express.Router();
-const verifyToken = require("../middleware/auth");
+const auth = require('../middleware/auth');
 const Task = require('../models/Task');
+const User = require('../models/User'); // ⬅️ FIX: This was missing
 
-
-router.get("/", verifyToken, async (req, res) => {
+// GET: All tasks for the authenticated user
+router.get('/', auth, async (req, res) => {
   try {
-    if (!req.user || !req.user.id) {
-        return res.status(401).json({ msg: 'User not authenticated' });
-    }
-    const tasks = await Task.find({ user: req.user.id });
-
-    res.json(tasks);
-  } catch (error) {
-    res.status(500).json({ msg: "Server error" });
-  }
-});
-
-// Get all tasks for the authenticated user
-router.get('/', async (req, res) => {
-
-  if (!req.user || !req.user.id) {
-    return res.status(401).json({ msg: 'User not authenticated' });
-  }
-
-  try {
-    const tasks = await Task.find({ 
+    const tasks = await Task.find({
       $or: [
         { user: req.user.id },
         { sharedWith: req.user.id }
@@ -40,18 +22,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add a new task
-router.post('/', async (req, res) => {
-
+// POST: Create a new task
+router.post('/', auth, async (req, res) => {
   const { title, description, category, priority, dueDate } = req.body;
 
   try {
-    if (!req.user || !req.user.id) {
-        return res.status(401).json({ msg: 'User not authenticated' });
-    }
     const newTask = new Task({
       user: req.user.id,
-
       title,
       description,
       category,
@@ -67,12 +44,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update a task
-router.put('/:id', async (req, res) => {
-
+// PUT: Update a task
+router.put('/:id', auth, async (req, res) => {
+  const { id } = req.params;
   const { title, description, category, priority, dueDate, completed } = req.body;
 
-  // Build task object
   const taskFields = {};
   if (title !== undefined) taskFields.title = title;
   if (description !== undefined) taskFields.description = description;
@@ -82,22 +58,17 @@ router.put('/:id', async (req, res) => {
   if (completed !== undefined) taskFields.completed = completed;
 
   try {
-    let task = await Task.findById(req.params.id);
-
+    let task = await Task.findById(id);
     if (!task) return res.status(404).json({ msg: 'Task not found' });
 
-    // Make sure user owns task or is shared with user
-    if (task.user.toString() !== req.user.id && 
-        !task.sharedWith.includes(req.user.id)) {
+    const isOwner = task.user.toString() === req.user.id;
+    const isShared = task.sharedWith.map(u => u.toString()).includes(req.user.id);
+
+    if (!isOwner && !isShared) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
-    task = await Task.findByIdAndUpdate(
-      req.params.id,
-      { $set: taskFields },
-      { new: true }
-    );
-
+    task = await Task.findByIdAndUpdate(id, { $set: taskFields }, { new: true });
     res.json(task);
   } catch (err) {
     console.error(err.message);
@@ -105,21 +76,17 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete a task
-router.delete('/:id', async (req, res) => {
-
+// DELETE: Remove a task
+router.delete('/:id', auth, async (req, res) => {
   try {
-    let task = await Task.findById(req.params.id);
-
+    const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ msg: 'Task not found' });
 
-    // Make sure user owns task
     if (task.user.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
-    await Task.findByIdAndRemove(req.params.id);
-
+    await task.remove();
     res.json({ msg: 'Task removed' });
   } catch (err) {
     console.error(err.message);
@@ -127,34 +94,27 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Share a task with another user
-router.post('/:id/share', async (req, res) => {
+// POST: Share task with another user
+router.post('/:id/share', auth, async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
 
   try {
-    const { email } = req.body;
-    
-    // Find user by email
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
-    }
-    
-    const task = await Task.findById(req.params.id);
-    if (!task) {
-      return res.status(404).json({ msg: 'Task not found' });
-    }
-    
-    // Check if task belongs to current user
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    const task = await Task.findById(id);
+    if (!task) return res.status(404).json({ msg: 'Task not found' });
+
     if (task.user.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
-    
-    // Add user to sharedWith array if not already there
-    if (!task.sharedWith.includes(user._id)) {
+
+    if (!task.sharedWith.map(u => u.toString()).includes(user._id.toString())) {
       task.sharedWith.push(user._id);
       await task.save();
     }
-    
+
     res.json(task);
   } catch (err) {
     console.error(err.message);

@@ -1,48 +1,46 @@
+// server/models/Task.js
 const mongoose = require('mongoose');
 
 const TaskSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'user',
-    required: true
+    ref: 'User',
+    required: true // Ensure each task is tied to a user
   },
   title: {
     type: String,
-    required: true
+    required: [true, 'Task title is required'],
+    trim: true
   },
   description: {
-    type: String
+    type: String,
+    trim: true
   },
   category: {
     type: String,
     default: 'Personal',
-    enum: ['Work', 'Personal', 'School']
+    trim: true
   },
   priority: {
     type: String,
-    default: 'Medium',
-    enum: ['High', 'Medium', 'Low']
+    enum: ['high', 'medium', 'low'],
+    default: 'medium'
   },
   dueDate: {
     type: Date
   },
-  reminder: {
-    type: Date
+  completed: {
+    type: Boolean,
+    default: false
   },
-  status: {
-    type: String,
-    default: 'Pending',
-    enum: ['Pending', 'In Progress', 'Completed']
-  },
-  sharedWith: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'user'
-  }],
-  tags: [String],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  sharedWith: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ]
+}, {
+  timestamps: true // adds createdAt and updatedAt automatically
 });
 
-module.exports = mongoose.model('task', TaskSchema);
+module.exports = mongoose.model('Task', TaskSchema);

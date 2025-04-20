@@ -1,10 +1,16 @@
-// client/src/pages/Home.js
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../Context/AuthContext';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="home-container">
@@ -13,11 +19,11 @@ const Home = () => {
         <p>Enhance your productivity with our efficient and user-friendly task management platform.</p>
         {!isAuthenticated ? (
           <div className="auth-buttons">
-            <Link to="/login" className="btn btn-primary">Login</Link>
-            <Link to="/register" className="btn btn-secondary">Register</Link>
+            <Link to="/login" className="btn btn-primary" aria-label="Go to login page">Login</Link>
+            <Link to="/register" className="btn btn-secondary" aria-label="Go to register page">Register</Link>
           </div>
         ) : (
-          <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
+          <Link to="/dashboard" className="btn btn-primary" aria-label="Go to dashboard">Go to Dashboard</Link>
         )}
       </div>
       

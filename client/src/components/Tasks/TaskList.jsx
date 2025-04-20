@@ -3,45 +3,49 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import TaskItem from './TaskItem';
 import TaskForm from './TaskForm';
-import { useAuth } from '../Context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const TaskList = () => {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();  // Get token and logout function from context
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [error, setError] = useState(null); // For error handling
 
   // Fetch tasks from the API
   const fetchTasks = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    console.log("Token before fetching tasks:", token); // Debugging log
-  
     if (!token) {
-      console.error("No token found. Please log in.");
+      console.error('No token found. Please log in.');
+      setError('User is not authenticated.');
       setLoading(false);
       return;
     }
-  
+
     try {
-      const response = await axios.get("http://localhost:5000/api/tasks", {
+      const response = await axios.get('http://localhost:5000/api/tasks', {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-  
-      console.log("Tasks fetched successfully:", response.data);
       setTasks(response.data);
+      setError(null);  // Clear previous errors on successful fetch
     } catch (error) {
-      console.error("Error fetching tasks:", error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        setError('Your session has expired. Please log in again.');
+        logout();  // Clear the token and log out the user
+      } else {
+        setError('Failed to fetch tasks. Please try again later.');
+      }
+      console.error('Error fetching tasks:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }
-  }, [token]); // Only re-run when `token` changes
+  }, [token, logout]);
 
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]); // Only re-run if `fetchTasks` changes
+  }, [fetchTasks]);
 
   // Add task
   const addTask = task => {
@@ -51,7 +55,7 @@ const TaskList = () => {
   // Update task
   const updateTask = updatedTask => {
     setTasks(prevTasks =>
-      prevTasks.map(task => task._id === updatedTask._id ? updatedTask : task)
+      prevTasks.map(task => (task._id === updatedTask._id ? updatedTask : task))
     );
   };
 
@@ -70,6 +74,8 @@ const TaskList = () => {
   return (
     <div className="task-list-container">
       <TaskForm addTask={addTask} />
+
+      {/* Filters */}
       <div className="task-filters">
         <div className="filter-group">
           <button 
@@ -104,10 +110,21 @@ const TaskList = () => {
           </select>
         </div>
       </div>
-      <div className="tasks">
-      {(!filteredTasks || filteredTasks.length === 0) ? (
 
-          <p>No tasks found.</p>
+      {/* Display error message if any */}
+      {error && (
+        <div className="alert alert-danger">
+          {error} 
+          {error === 'Your session has expired. Please log in again.' && (
+            <button onClick={() => window.location.href = '/login'}>Go to Login</button>
+          )}
+        </div>
+      )}
+
+      {/* Display tasks */}
+      <div className="tasks">
+        {filteredTasks.length === 0 ? (
+          <p>No tasks found matching the selected filters.</p>
         ) : (
           filteredTasks.map(task => (
             <TaskItem 

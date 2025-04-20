@@ -1,25 +1,25 @@
 // client/src/components/Tasks/TaskItem.js
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuth } from '../Context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const TaskItem = ({ task, updateTask, deleteTask }) => {
   const { token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editTask, setEditTask] = useState(task);
+  const [error, setError] = useState(null); // State for error handling
 
   if (!task) {
     return <p>Task not available.</p>;
   }
-  
-  const { _id, title, description, category, priority, dueDate, completed } = task;
 
+  const { _id, title, description, category, priority, dueDate, completed } = task;
 
   const onChange = e => setEditTask({ ...editTask, [e.target.name]: e.target.value });
 
   const onToggleComplete = async () => {
     const updatedTask = { ...task, completed: !completed };
-    
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -29,8 +29,9 @@ const TaskItem = ({ task, updateTask, deleteTask }) => {
 
     try {
       const res = await axios.put(`/api/tasks/${_id}`, updatedTask, config);
-      updateTask(res.data);
+      updateTask(res.data); // Update task in the parent component state
     } catch (err) {
+      setError('Failed to update task completion. Please try again later.');
       console.error(err);
     }
   };
@@ -44,15 +45,22 @@ const TaskItem = ({ task, updateTask, deleteTask }) => {
 
     try {
       await axios.delete(`/api/tasks/${_id}`, config);
-      deleteTask(_id);
+      deleteTask(_id); // Remove task from the parent component state
     } catch (err) {
+      setError('Failed to delete task. Please try again later.');
       console.error(err);
     }
   };
 
   const onSubmitEdit = async e => {
     e.preventDefault();
-    
+
+    // Validate required fields
+    if (!editTask.title) {
+      setError('Title is required');
+      return;
+    }
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -62,16 +70,17 @@ const TaskItem = ({ task, updateTask, deleteTask }) => {
 
     try {
       const res = await axios.put(`/api/tasks/${_id}`, editTask, config);
-      updateTask(res.data);
-      setIsEditing(false);
+      updateTask(res.data); // Update task in the parent component state
+      setIsEditing(false); // Close the edit form
     } catch (err) {
+      setError('Failed to update task. Please try again later.');
       console.error(err);
     }
   };
 
   // Format due date
   const formatDate = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return 'No due date set';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
@@ -84,6 +93,8 @@ const TaskItem = ({ task, updateTask, deleteTask }) => {
 
   return (
     <div className={`task-item ${completed ? 'completed' : ''}`}>
+      {error && <div className="alert alert-danger">{error}</div>} {/* Error message display */}
+      
       {isEditing ? (
         <form onSubmit={onSubmitEdit} className="edit-form">
           <input

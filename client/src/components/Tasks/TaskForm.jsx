@@ -1,7 +1,7 @@
 // client/src/components/Tasks/TaskForm.js
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuth } from '../Context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const TaskForm = ({ addTask }) => {
   const { token } = useAuth();
@@ -12,6 +12,8 @@ const TaskForm = ({ addTask }) => {
     priority: 'medium',
     dueDate: ''
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Loading state for button
 
   const { title, description, category, priority, dueDate } = task;
 
@@ -19,36 +21,50 @@ const TaskForm = ({ addTask }) => {
 
   const onSubmit = async e => {
     e.preventDefault();
-    
-    if (title === '') {
-      alert('Please add a title');
-    } else {
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
-        }
-      };
+    setError(''); // Reset error message before submitting
+    setLoading(true); // Start loading state
 
-      try {
-        const res = await axios.post('/api/tasks', task, config);
-        addTask(res.data);
-        setTask({
-          title: '',
-          description: '',
-          category: 'Personal',
-          priority: 'medium',
-          dueDate: ''
-        });
-      } catch (err) {
-        console.error(err);
+    // Validation
+    if (title === '') {
+      setError('Please add a title');
+      setLoading(false);
+      return;
+    }
+
+    if (!dueDate) {
+      setError('Please select a due date');
+      setLoading(false);
+      return;
+    }
+
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token
       }
+    };
+
+    try {
+      const res = await axios.post('/api/tasks', task, config);
+      addTask(res.data);
+      setTask({
+        title: '',
+        description: '',
+        category: 'Personal',
+        priority: 'medium',
+        dueDate: ''
+      });
+      setLoading(false);
+    } catch (err) {
+      setError('Error adding task, please try again later.');
+      setLoading(false);
     }
   };
 
   return (
     <form onSubmit={onSubmit} className="task-form">
       <h2>Add Task</h2>
+      {error && <div className="alert alert-danger">{error}</div>} {/* Error message display */}
       <div className="form-group">
         <label htmlFor="title">Title</label>
         <input
@@ -94,7 +110,9 @@ const TaskForm = ({ addTask }) => {
           onChange={onChange}
         />
       </div>
-      <button type="submit" className="btn">Add Task</button>
+      <button type="submit" className="btn" disabled={loading}>
+        {loading ? 'Adding...' : 'Add Task'}
+      </button>
     </form>
   );
 };

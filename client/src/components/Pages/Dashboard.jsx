@@ -2,19 +2,21 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TaskList from '../Tasks/TaskList';
-import { useAuth } from '../Context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
-  const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [loading, isAuthenticated, navigate]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="dashboard-container">
