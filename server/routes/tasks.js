@@ -25,27 +25,28 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   const { title, description, category, priority, dueDate } = req.body;
 
-  // Validate required fields
-  if (!title || !description || !category || !priority) {
-    return res.status(400).json({ msg: 'Please provide all required fields' });
+  // Basic validation
+  if (!title || !dueDate) {
+    return res.status(400).json({ msg: 'Title and due date are required' });
   }
 
   try {
-    // Create the task with the authenticated user's ID
+    console.log('User ID:', req.user.id); // Debugging the user ID
     const newTask = new Task({
-      user: req.user.id,  // Ensure the user ID is correctly assigned
+      user: req.user.id, // Assign the user ID from the decoded token
       title,
       description,
       category,
       priority,
-      dueDate
+      dueDate,
+      sharedWith: [] // Initialize sharedWith as an empty array if not provided
     });
-  
+
     const task = await newTask.save();
-    res.json(task);
+    res.status(201).json(task); // Status code 201 for resource creation
   } catch (err) {
-    console.error('Error creating task:', err.message);
-    res.status(500).json({ msg: 'Server Error', error: err.message });
+    console.error('Error while saving task:', err.message);
+    res.status(500).send('Server Error');
   }
 });
 
