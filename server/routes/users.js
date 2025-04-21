@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
+const auth = require('../middleware/auth'); // Import the auth middleware
 
 // Setup nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -50,8 +51,6 @@ router.post('/register', async (req, res) => {
 // @desc    Login a user
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-
-  console.log('Login attempt:', email);  // Debugging log
 
   try {
     const user = await User.findOne({ email });
@@ -141,6 +140,21 @@ router.post('/reset/:token', async (req, res) => {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ msg: 'Reset link has expired' });
     }
+    res.status(500).send('Server error');
+  }
+});
+
+// @route   GET /api/auth
+// @desc    Check if the user is authenticated
+router.get('/auth', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    console.error('Auth Error:', err.message);
     res.status(500).send('Server error');
   }
 });

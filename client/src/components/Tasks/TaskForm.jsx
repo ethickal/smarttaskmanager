@@ -1,120 +1,108 @@
-// client/src/components/Tasks/TaskForm.js
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../Context/AuthContext'; // Import the custom AuthContext
 
-const TaskForm = ({ addTask }) => {
-  const { token } = useAuth();
-  const [task, setTask] = useState({
-    title: '',
-    description: '',
-    category: 'Personal',
-    priority: 'medium',
-    dueDate: ''
+const Login = () => {
+  const { login } = useAuth(); // Access the login function from context
+  const navigate = useNavigate(); // Navigate hook to redirect after successful login
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Loading state for button
+  const [error, setError] = useState(''); // To store error message
+  const [loading, setLoading] = useState(false); // To handle form submission loading state
 
-  const { title, description, category, priority, dueDate } = task;
+  const { email, password } = formData; // Destructure form data for convenience
 
-  const onChange = e => setTask({ ...task, [e.target.name]: e.target.value });
+  // Handle changes in form inputs
+  const onChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const onSubmit = async e => {
+  // Handle form submission
+  const onSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // Reset error message before submitting
-    setLoading(true); // Start loading state
+    setError(''); // Reset any previous errors
+    setLoading(true); // Set loading state
 
-    // Validation
-    if (title === '') {
-      setError('Please add a title');
+    // Basic validation for email format
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email');
       setLoading(false);
       return;
     }
 
-    if (!dueDate) {
-      setError('Please select a due date');
+    // Ensure password is not empty
+    if (password.trim() === '') {
+      setError('Password cannot be empty');
       setLoading(false);
       return;
     }
-
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': token
-      }
-    };
 
     try {
-      const res = await axios.post('/api/tasks', task, config);
-      addTask(res.data);
-      setTask({
-        title: '',
-        description: '',
-        category: 'Personal',
-        priority: 'medium',
-        dueDate: ''
-      });
-      setLoading(false);
+      // Send POST request to the backend for login
+      const res = await axios.post(
+        'http://localhost:5000/api/users/login',
+        { email, password }
+      );
+
+      // Log the token received from the server
+      console.log('Token received from server:', res.data.token);
+
+      // Save the token using context or other means and navigate to the dashboard
+      login(res.data.token); // Store token in context or localStorage
+
+      // Redirect to the dashboard page after successful login
+      navigate('/dashboard');
     } catch (err) {
-      setError('Error adding task, please try again later.');
-      setLoading(false);
+      // Handle error and provide the error message
+      const errorMessage =
+        err.response?.data?.msg || 'An error occurred during login';
+      setError(errorMessage); // Display the error message to the user
+      console.error('Login error:', err.response?.data); // Log the detailed error for debugging
+    } finally {
+      setLoading(false); // Reset loading state once the request is complete
     }
   };
 
   return (
-    <form onSubmit={onSubmit} className="task-form">
-      <h2>Add Task</h2>
-      {error && <div className="alert alert-danger">{error}</div>} {/* Error message display */}
-      <div className="form-group">
-        <label htmlFor="title">Title</label>
-        <input
-          type="text"
-          name="title"
-          value={title}
-          onChange={onChange}
-          placeholder="Task title"
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor="description">Description</label>
-        <textarea
-          name="description"
-          value={description}
-          onChange={onChange}
-          placeholder="Task description"
-        ></textarea>
-      </div>
-      <div className="form-group">
-        <label htmlFor="category">Category</label>
-        <select name="category" value={category} onChange={onChange}>
-          <option value="Personal">Personal</option>
-          <option value="Work">Work</option>
-          <option value="School">School</option>
-          <option value="Health">Health</option>
-        </select>
-      </div>
-      <div className="form-group">
-        <label htmlFor="priority">Priority</label>
-        <select name="priority" value={priority} onChange={onChange}>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div className="form-group">
-        <label htmlFor="dueDate">Due Date</label>
-        <input
-          type="datetime-local"
-          name="dueDate"
-          value={dueDate}
-          onChange={onChange}
-        />
-      </div>
-      <button type="submit" className="btn" disabled={loading}>
-        {loading ? 'Adding...' : 'Add Task'}
-      </button>
-    </form>
+    <div className="auth-container">
+      <h1>Login</h1>
+      {/* Display error message if any */}
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      {/* Login form */}
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
+          <label htmlFor="email">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={email}
+            onChange={onChange}
+            required
+            placeholder="Enter your email"
+            disabled={loading} // Disable input while loading
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="password">Password</label>
+          <input
+            type="password"
+            name="password"
+            value={password}
+            onChange={onChange}
+            required
+            placeholder="Enter your password"
+            disabled={loading} // Disable input while loading
+          />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Logging in...' : 'Login'}
+        </button>
+      </form>
+    </div>
   );
 };
 
-export default TaskForm;
+export default Login;

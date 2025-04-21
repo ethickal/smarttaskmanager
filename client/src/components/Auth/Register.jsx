@@ -31,8 +31,8 @@ const Register = () => {
       setError('Passwords do not match');
     } else {
       try {
-        // Send POST request to the backend for registration
-        const res = await axios.post('http://localhost:5000/api/users/register', {
+        // Send POST request to the correct backend route for registration
+        const res = await axios.post('http://localhost:5000/api/auth/register', {
           name,
           email,
           password
